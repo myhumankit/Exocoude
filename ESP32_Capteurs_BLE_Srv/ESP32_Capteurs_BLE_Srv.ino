@@ -1,8 +1,9 @@
 /*
    Exocoude / Fabrikarium 2022 / 18-20 oct 2022
-   Interface de contrôle et BLE server
+   Interface de contrôle et BLE server (BLE = Bluetooth Low Energy) 
    3 commandes par interrupteur flexible fixé sur un doigt pour définir le sens et l'orientation d'un mouvement.
-   Le sens (haut,bas,gauche,droite) est transmis en BLE à une 2e carte qui commande les moteurs, un interrupteur relié à cette 2e carte active ou non le mouvement 
+   Le sens (haut,bas,gauche,droite) est transmis en BLE à une 2e carte qui commande les moteurs, 
+     un interrupteur relié à cette 2e carte active ou non le mouvement 
 
    arduino IDE v1.8.5
      + lib. OneButton v2.0.4 de Matthias Hertel (https://github.com/mathertel/OneButton)
@@ -44,7 +45,7 @@ BLEServer *pServer;
 BLEService *pService;
 BLECharacteristic *pCharacteristic;
 
-char strCharacteristic[3] = "D0";
+char strCharacteristic[3] = "D0"; // donnees transmises par BLE
 
 OneButton bouton1(BROCHE_BOUTON1, true, true); // broche, logique (true = active low), pullup interne ?
 OneButton bouton2(BROCHE_BOUTON2, true, true); // broche, logique (true = active low), pullup interne ?
@@ -58,14 +59,14 @@ boolean mode_sens      = false ; // false : gauche/haut, true : droite/bas
 boolean mode_marche    = false ; // false : arrêt, true : marche
 
 // Donnée à transmettre
-boolean changed = false;   // transmettre uniquement si changement
+boolean changed = false;         // transmettre uniquement si changement
 
 static void handleClick1() {
   if (mode_onoff) {
     changed = true;
     if (DEBUG) Serial.println("clic (changement de sens)");
 
-    mode_sens = !mode_sens;
+    mode_sens = !mode_sens;           // inverser le sens 
     sonClic(1);
   }
 }
@@ -75,7 +76,7 @@ static void handleDoubleClick1() {
     changed = true;
     if (DEBUG) Serial.println("double clic (changement de type de mouvement");
 
-    mode_mouvement = !mode_mouvement;
+    mode_mouvement = !mode_mouvement;  // changer de mouvement (haut/bas OU gauche/droite)
 
     // Remettre la valeur de sens à défaut
     mode_sens = false;
@@ -124,7 +125,6 @@ static void handleLongPressStop2() {
 void sonClic(int repet) {
   for (int i = 0; i < repet; i++) {
     tone(BROCHE_HP, 1760*repet, 150);
-    //noTone(BROCHE_HP);
     delay(100);
   }
 }
@@ -133,14 +133,12 @@ void sonOn() {
   for (int i = 2000; i < 6000; i += 200) {
     tone(BROCHE_HP, i, 20);
   }
-  //noTone(BROCHE_HP);
 }
 
 void sonOff() {
   for (int i = 6000; i > 2000; i -= 200) {
     tone(BROCHE_HP, i, 20);
   }
-  //noTone(BROCHE_HP);
 }
 
 
@@ -214,6 +212,4 @@ void loop() {
     changed = false;
   }
 
-  // put your main code here, to run repeatedly:
-  //delay(2000);
 }
