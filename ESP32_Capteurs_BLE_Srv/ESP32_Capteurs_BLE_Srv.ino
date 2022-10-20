@@ -45,7 +45,7 @@ BLEServer *pServer;
 BLEService *pService;
 BLECharacteristic *pCharacteristic;
 
-char strCharacteristic[3] = "D0"; // donnees transmises par BLE
+char strCharacteristic[4] = "UI0";
 
 OneButton bouton1(BROCHE_BOUTON1, true, true); // broche, logique (true = active low), pullup interne ?
 OneButton bouton2(BROCHE_BOUTON2, true, true); // broche, logique (true = active low), pullup interne ?
@@ -88,16 +88,16 @@ static void handleLongPressStop1() {
   changed = true;
   if (DEBUG) Serial.println("long press stop 1");
   mode_onoff = !mode_onoff;
-  if (DEBUG && mode_onoff)  Serial.println("systeme actif");
-  if (DEBUG && !mode_onoff) Serial.println("systeme en arret");
 
-  // Remettre toutes les valeurs par défaut
   if (mode_onoff) {
+    if (DEBUG)  Serial.println("systeme actif");
+    sonOn();
+  } else {
+    if (DEBUG) Serial.println("systeme en arret");
+    // Remettre toutes les valeurs par défaut
     mode_mouvement = false;
     mode_sens = false;
     mode_marche = false;
-    sonOn();
-  } else {
     sonOff();
   }
 }
@@ -191,15 +191,22 @@ void loop() {
   bouton1.tick();
   bouton2.tick();
 
-  if (changed && mode_onoff) {
+  if (changed) {
+    if (mode_onoff) {
+      strCharacteristic[2] = '1';
 
-    // Chercher la direction définie
-    if (!mode_mouvement && !mode_sens) strCharacteristic[0] = 'U' ;  // haut
-    if (!mode_mouvement && mode_sens)  strCharacteristic[0] = 'D' ;  // bas
-    if (mode_mouvement && !mode_sens)  strCharacteristic[0] = 'L' ;  // gauche
-    if (mode_mouvement && mode_sens)   strCharacteristic[0] = 'R' ;  // droite
-    if (mode_marche)                   strCharacteristic[1] = '1' ;  // marche
-    else                               strCharacteristic[1] = '0' ;  // arrêt
+      // Chercher la direction définie
+      if (!mode_mouvement && !mode_sens) strCharacteristic[0] = 'U' ;  // haut
+      if (!mode_mouvement && mode_sens)  strCharacteristic[0] = 'D' ;  // bas
+      if (mode_mouvement && !mode_sens)  strCharacteristic[0] = 'L' ;  // gauche
+      if (mode_mouvement && mode_sens)   strCharacteristic[0] = 'R' ;  // droite
+      if (mode_marche)                   strCharacteristic[1] = 'A' ;  // marche
+      else                               strCharacteristic[1] = 'I' ;  // arrêt
+    } else {
+      strCharacteristic[0] = 'U';
+      strCharacteristic[1] = 'I';
+      strCharacteristic[2] = '0';
+    }
     
     if (DEBUG) {
       Serial.print("Mouvement update: "); // debug

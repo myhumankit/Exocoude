@@ -8,6 +8,21 @@
 
 #include "BLEDevice.h"
 //#include "BLEScan.h"
+#include "OneButton.h"
+
+#define DEBUG true             // Infos de debug sur la console série
+
+#define USE_ILS         1
+#define BROCHE_ILS1     4
+#define BROCHE_ILS2     5
+
+// The motor control relays are inactive at H (5V)
+// Drive a L (0V) to the corresponding pin (relay control input) to turn
+// in that direction
+#define BROCHE_MOT_U    16
+#define BROCHE_MOT_D    17
+#define BROCHE_MOT_L    18
+#define BROCHE_MOT_R    19
 
 // The remote service we wish to connect to.
 static BLEUUID    serviceUUID("0589d19b-410b-4242-a0f6-65e0094bf080");
@@ -20,17 +35,66 @@ static boolean doScan = false;
 static BLERemoteCharacteristic* pRemoteCharacteristic;
 static BLEAdvertisedDevice* myDevice;
 
+char strCharacteristic[4] = "UI0";
+
+OneButton ils1(BROCHE_ILS1, true, true); // ils, logique (true = active low), pullup interne
+OneButton ils2(BROCHE_ILS2, true, true); // ils, logique (true = active low), pullup interne
+
+// Variables qui conservent les modes
+// Par défaut mode haut/bas, direction haut
+// Quand on bascule en mode rotation, par défaut à gauche
+boolean mode_onoff     = false ; // allumé / éteint
+boolean mode_mouvement = false ; // false : haut/bas, true : gauche/droite
+boolean mode_sens      = false ; // false : gauche/haut, true : droite/bas
+boolean mode_marche    = false ; // false : arrêt, true : marche
+boolean changed        = false;   // detection de changement
+
+static void handleLongPressStart1() {
+  changed = true;
+  if (DEBUG) Serial.println("press1 (active)");
+
+  strCharacteristic[1] = 'A';
+  mode_marche = true;
+}
+
+static void handleLongPressStop1() {
+  changed = true;
+  if (DEBUG) Serial.println("release1 (inactive)");
+
+  strCharacteristic[1] = 'I';
+  mode_marche = false;
+}
+
+static void handleLongPressStart2() {
+  changed = true;
+  if (DEBUG) Serial.println("press2 (active)");
+}
+
+static void handleLongPressStop2() {
+  changed = true;
+  if (DEBUG) Serial.println("release2 (inactive)");
+}
+
 static void notifyCallback(
   BLERemoteCharacteristic* pBLERemoteCharacteristic,
   uint8_t* pData,
   size_t length,
   bool isNotify) {
-    Serial.print("Notify callback for characteristic ");
-    Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
-    Serial.print(" of data length ");
-    Serial.println(length);
-    Serial.print("data: ");
-    Serial.println((char*)pData);
+    changed = true;
+    strCharacteristic[0] = pData[0];
+    if (USE_ILS == 0) strCharacteristic[1] = pData[1];
+    strCharacteristic[2] = pData[2]; 
+     
+    if (DEBUG) {   
+      //Serial.print("Notify callback for characteristic ");
+      //Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
+      //Serial.print(" of data length ");
+      //Serial.println(length);
+      //Serial.print("data: ");
+      //Serial.println((char*)pData);
+      Serial.print("Notify callback: ");
+      Serial.println(strCharacteristic);
+    }
 }
 
 class MyClientCallback : public BLEClientCallbacks {
@@ -127,11 +191,45 @@ void setup() {
   pBLEScan->setWindow(449);
   pBLEScan->setActiveScan(true);
   pBLEScan->start(5, false);
+
+  // Evènements attachés aux ils
+  ils1.attachLongPressStart(handleLongPressStart1);
+  ils1.attachLongPressStop(handleLongPressStop1);
+  ils2.attachLongPressStart(handleLongPressStart2);
+  ils2.attachLongPressStop(handleLongPressStop2);
+
+  // Réglages des durées
+  ils1.setDebounceTicks(50);  // Period of time in which to ignore additional level changes.
+  ils1.setClickTicks(500);    // Timeout used to distinguish single clicks from double clicks.
+  ils1.setPressTicks(500);    // Duration to hold a button to trigger a long press.
+  ils2.setDebounceTicks(50);  // Period of time in which to ignore additional level changes.
+  ils2.setClickTicks(500);    // Timeout used to distinguish single clicks from double clicks.
+  ils2.setPressTicks(500);    // Duration to hold a button to trigger a long press.
+
+  // As a precaution pre-drive H to all relay control signals to inactivate motors ?
+  digitalWrite(BROCHE_MOT_U, HIGH);
+  digitalWrite(BROCHE_MOT_D, HIGH);
+  digitalWrite(BROCHE_MOT_L, HIGH);
+  digitalWrite(BROCHE_MOT_R, HIGH);
+
+  // Configure relay control signals as digital outputs
+  pinMode(BROCHE_MOT_U, OUTPUT);
+  pinMode(BROCHE_MOT_D, OUTPUT);
+  pinMode(BROCHE_MOT_L, OUTPUT);
+  pinMode(BROCHE_MOT_R, OUTPUT);
+
+  // Drive H to all relay control signals to inactivate motors
+  digitalWrite(BROCHE_MOT_U, HIGH);
+  digitalWrite(BROCHE_MOT_D, HIGH);
+  digitalWrite(BROCHE_MOT_L, HIGH);
+  digitalWrite(BROCHE_MOT_R, HIGH);
 } // End of setup.
 
 
 // This is the Arduino main loop function.
 void loop() {
+  ils1.tick();
+  //ils2.tick();
 
   // If the flag "doConnect" is true then we have scanned for and found the desired
   // BLE Server with which we wish to connect.  Now we connect to it.  Once we are 
@@ -145,14 +243,65 @@ void loop() {
     doConnect = false;
   }
 
+  if (changed) {
+    if ( strCharacteristic[1] == 'A' && strCharacteristic[2] == '1') {
+      if ( strCharacteristic[0] == 'U' ) {
+         if (DEBUG) {        
+           Serial.println("Motor UD : UP");
+           Serial.println("Motor LR : OFF");
+         }
+         digitalWrite(BROCHE_MOT_U, LOW);
+         digitalWrite(BROCHE_MOT_D, HIGH);
+         digitalWrite(BROCHE_MOT_L, HIGH);
+         digitalWrite(BROCHE_MOT_R, HIGH);
+      } else if ( strCharacteristic[0] == 'D' ) {
+         if (DEBUG) {        
+           Serial.println("Motor UD : DOWN");
+           Serial.println("Motor LR : OFF");
+         }
+         digitalWrite(BROCHE_MOT_U, HIGH);
+         digitalWrite(BROCHE_MOT_D, LOW);
+         digitalWrite(BROCHE_MOT_L, HIGH);
+         digitalWrite(BROCHE_MOT_R, HIGH);
+      } else if ( strCharacteristic[0] == 'L' ) {
+         if (DEBUG) {                
+           Serial.println("Motor UD : OFF");
+           Serial.println("Motor LR : LEFT");
+         }
+         digitalWrite(BROCHE_MOT_U, HIGH);
+         digitalWrite(BROCHE_MOT_D, HIGH);
+         digitalWrite(BROCHE_MOT_L, LOW);
+         digitalWrite(BROCHE_MOT_R, HIGH);
+      } else if ( strCharacteristic[0] == 'R' ) {
+         if (DEBUG) { 
+           Serial.println("Motor UD : OFF");
+           Serial.println("Motor LR : RIGHT");
+         }
+         digitalWrite(BROCHE_MOT_U, HIGH);
+         digitalWrite(BROCHE_MOT_D, HIGH);
+         digitalWrite(BROCHE_MOT_L, HIGH);
+         digitalWrite(BROCHE_MOT_R, LOW);
+      } 
+    } else {
+      if (DEBUG) { 
+        Serial.println("Motor UD : OFF");
+        Serial.println("Motor LR : OFF");
+      }
+      digitalWrite(BROCHE_MOT_U, HIGH);
+      digitalWrite(BROCHE_MOT_D, HIGH);
+      digitalWrite(BROCHE_MOT_L, HIGH);
+      digitalWrite(BROCHE_MOT_R, HIGH);
+    }
+  }
+
   // If we are connected to a peer BLE Server, update the characteristic each time we are reached
   // with the current time since boot.
   if (connected) {
-    String newValue = "Time since boot: " + String(millis()/1000);
-    Serial.println(newValue);
+    //String newValue = "Time since boot: " + String(millis()/1000);
+    //Serial.println(newValue);
   } else if(doScan){
     BLEDevice::getScan()->start(0);  // this is just example to start scan after disconnect, most likely there is better way to do it in arduino
   }
   
-  delay(1000); // Delay a second between loops.
+  delay(100); // Delay between loops.
 } // End of loop
