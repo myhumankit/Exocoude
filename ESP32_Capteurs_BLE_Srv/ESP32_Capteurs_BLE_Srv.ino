@@ -1,16 +1,18 @@
 /*
    Exocoude / Fabrikarium 2022 / 18-20 oct 2022
    Interface de contrôle et BLE server
+   3 commandes par interrupteur flexible fixé sur un doigt pour définir le sens et l'orientation d'un mouvement.
+   Le sens (haut,bas,gauche,droite) est transmis en BLE à une 2e carte qui commande les moteurs, un interrupteur relié à cette 2e carte active ou non le mouvement 
 
    arduino IDE v1.8.5
-     + lib. OneButton de Matthias Hertel (https://github.com/mathertel/OneButton)
+     + lib. OneButton v2.0.4 de Matthias Hertel (https://github.com/mathertel/OneButton)
      + lib  ESP32 C++ Utility Classes (BLE) by Neil Kolban (http://www.neilkolban.com/esp32/docs/cpp_utils/html/index.html)
 
    v. 002 : proto sur arduino nano avec son et pullup externe
    v. 003 : modif pour pullup interne
    v. 004 : integration avec BLE server
 
-   Une seule donnée est transmise quand un changement est détecté sur 2 caractères:
+   Une seule donnée est transmise sur 2 caractères quand un changement est détecté :
    1er - direction - U : haut, R : droite, D : bas, L : gauche
    2eme - moteur - 1 : marche, 0 : arrêt
 
@@ -34,9 +36,9 @@
 #define SERVICE_UUID        "0589d19b-410b-4242-a0f6-65e0094bf080"
 #define CHARACTERISTIC_UUID "f4c50a2e-3c7d-4948-b964-33966da1dfe2"
 
-#define BROCHE_BOUTON1     4
-#define BROCHE_BOUTON2     5
-#define BROCHE_HP          2
+#define BROCHE_BOUTON1     4    // interrupteur flexible
+#define BROCHE_BOUTON2     5    // bouton de test, simule le flag actif/inactif
+#define BROCHE_HP          2    // buzzer pour un retour audio sur l'interrupteur flexible
 
 BLEServer *pServer;
 BLEService *pService;
