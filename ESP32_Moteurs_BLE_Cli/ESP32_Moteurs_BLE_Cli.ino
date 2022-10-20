@@ -1,21 +1,18 @@
-/**
- * A BLE client example that is rich in capabilities.
- * There is a lot new capabilities implemented.
- * author unknown
- * updated by chegewara
- */
+/*
+   Exocoude / Fabrikarium 2022 / 18-20 oct 2022
+   Controle moteur et BLE client
+
+   arduino IDE v2.0.0
+     + lib  ESP32 C++ Utility Classes (BLE) by Neil Kolban (http://www.neilkolban.com/esp32/docs/cpp_utils/html/index.html)
+*/
 
 #include "BLEDevice.h"
 //#include "BLEScan.h"
 
 // The remote service we wish to connect to.
-//static BLEUUID    serviceUUID("cef797da-2e91-4ea4-a424-f45082ac0682");
-//static BLEUUID    serviceUUID("1815");
 static BLEUUID    serviceUUID("0589d19b-410b-4242-a0f6-65e0094bf080");
 // The characteristic of the remote service we are interested in.
-//static BLEUUID    charUUID("2a56");
 static BLEUUID    charUUID("f4c50a2e-3c7d-4948-b964-33966da1dfe2");
-//static BLEAddress tbBleAddr("04:cd:15:7a:ae:df");
 
 static boolean doConnect = false;
 static boolean connected = false;
@@ -103,15 +100,9 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
   void onResult(BLEAdvertisedDevice advertisedDevice) {
     Serial.print("BLE Advertised Device found: ");
     Serial.println(advertisedDevice.toString().c_str());
-
-    //for (int i=0; i < advertisedDevice.getServiceUUIDCount(); i++) {
-    //  Serial.print("- UUID: ");
-    //  Serial.println(advertisedDevice.getServiceUUID(i).toString().c_str());
-    //}
     
     // We have found a device, let us now see if it contains the service we are looking for.
     if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(serviceUUID)) {
-    //if (advertisedDevice.getAddress().equals(tbBleAddr)) {
       BLEDevice::getScan()->stop();
       myDevice = new BLEAdvertisedDevice(advertisedDevice);
       doConnect = true;
