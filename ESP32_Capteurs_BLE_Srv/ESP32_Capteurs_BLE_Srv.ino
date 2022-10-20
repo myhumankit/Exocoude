@@ -45,7 +45,7 @@ BLEServer *pServer;
 BLEService *pService;
 BLECharacteristic *pCharacteristic;
 
-char strCharacteristic[4] = "UI0";
+char strCharacteristic[4] = "UI0";  // donnees transmises par BLE
 
 OneButton bouton1(BROCHE_BOUTON1, true, true); // broche, logique (true = active low), pullup interne ?
 OneButton bouton2(BROCHE_BOUTON2, true, true); // broche, logique (true = active low), pullup interne ?
